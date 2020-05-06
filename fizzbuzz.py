@@ -1,9 +1,11 @@
+#!/usr/bin/env python3
 from proseparser import step2
 
 code = [
         "map",
         [
-            "λ",
+            "defun",
+            "fizzbuzz",
             ["x"],
             [
                 "if",
@@ -52,5 +54,4 @@ code = [
         "1"
 ]
 
-if __name__ == "__main__":
-    print(step2(code)())
+output = step2(code)()

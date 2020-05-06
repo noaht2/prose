@@ -6,6 +6,21 @@ from copy import deepcopy
 from types import FunctionType, WrapperDescriptorType
 from typing import *
 import numbers
+from operator import index
+from itertools import islice, chain
+
+
+def metadec(dec: FunctionType) -> Callable[[FunctionType], FunctionType]:
+    def newdec(func: FunctionType) -> FunctionType:
+        # print("metadec.newdec\t", dec, func)
+        newfunc = dec(func)
+        newfunc.__name__ = func.__name__
+        newfunc.__qualname__ = func.__qualname__
+        return newfunc
+
+    newdec.__name__ = dec.__name__
+    newdec.__qualname__ = dec.__qualname__
+    return newdec
 
 
 def default_eval(car: Object, cdr: Object) -> Object:
@@ -16,6 +31,7 @@ def default_eval(car: Object, cdr: Object) -> Object:
         return Cons(car, cdr())
 
 
+@metadec
 def eval_dec(func: FunctionType) -> Callable[[Object, Object], Object]:
     def eval_(car: Object, cdr: Object) -> Object:
         # print("eval_dec.eval_\t", func, car, cdr)
@@ -81,8 +97,7 @@ class Cons(Object):
 
     def __repr__(self):
         return (
-            "Cons("+repr(self.car)+", "+repr(self.cdr)+", for_eval="
-            + str(self.for_eval)+")"
+            f"Cons({repr(self.car)}, {repr(self.cdr)}, for_eval={self.for_eval})"
         )
 
     def __str__(self):
@@ -149,7 +164,7 @@ class Cons(Object):
         """Return the whole cdr instead of just self[1]"""
         return self.car, self.cdr
 
-    def is_list(self):
+    def is_list(self) -> bool:
         if isinstance(self.cdr, Cons):
             return self.cdr.is_list()
         else:
@@ -169,6 +184,16 @@ class Cons(Object):
             )
         else:
             return key
+
+    def replace(self, obj: Object, to: Object) -> None:
+        if self.car == obj:
+            self.car = to
+        elif isinstance(self.car, Cons):
+            self.car.replace(obj, to)
+        if self.cdr == obj:
+            self.cdr = to
+        elif isinstance(self.cdr, Cons):
+            self.cdr.replace(obj, to)
 
     @property
     def for_eval(self):
@@ -242,7 +267,11 @@ class BuiltinWrapper(type):
     @staticmethod
     def parent_func_dec(builtin: WrapperDescriptorType) -> FunctionType:
         def modified_builtin(self, *args):
-            return type(self)(builtin(self, *args))
+            result = builtin(self, *args)
+            if result is NotImplemented:
+                return result
+            else:
+                return type(self)(result)
 
         return modified_builtin
 
@@ -293,6 +322,7 @@ class Number(float, Atom, metaclass=BuiltinWrapper):
     ]
 
     def __new__(cls, obj):
+        # print("Number.__new__\t", cls, obj)
         return super().__new__(cls, obj)
 
     def __init__(self, obj):
@@ -335,12 +365,13 @@ class Symbol(Atom):
         super().__init__(symbol_eval)
         self.name = name
         self.value = value
+        # print("Symbol.__init__\t", self, name, value)
 
     def __repr__(self):
         if self.name in type(self).registered:
             return (
-                "Symbol("+repr(self.name)+", "+repr(self.value)+", for_eval="
-                + str(self.for_eval)+")"
+                f"Symbol({repr(self.name)}, {repr(self.value)})"  # +", for_eval="
+                # + str(self.for_eval)+")"
             )
         else:
             return "Symbol("+repr(self.name)+")"
@@ -352,7 +383,10 @@ class Symbol(Atom):
         return (
             isinstance(other, type(self))
             and self.name == other.name
-            and self.value == other.value
+            and (
+                (not hasattr(self, "value") and not hasattr(other, "value"))
+                or self.value == other.value
+            )
         )
 
     def __ne__(self, other):
@@ -367,10 +401,15 @@ class Symbol(Atom):
 
     @property
     def value(self):
-        return type(self).registered[self.name]
+        # print("Symbol.value\t", self.name, type(self).registered[self.name])
+        try:
+            return type(self).registered[self.name]
+        except KeyError:
+            raise AttributeError
 
     @value.setter
     def value(self, value):
+        # print("Symbol.value.setter\t", self, value)
         if value is not None:
             type(self).registered[self.name] = value
 
@@ -399,20 +438,31 @@ def symbol_eval(car: Symbol, cdr: Optional[Object]) -> Cons:
         return Cons(car, cdr)
 
 
+@metadec
 def eval_func_dec(func: FunctionType
                   ) -> Callable[[FunctionType, Object], Object]:
-    def eval_func(car: FunctionType, cdr: Object) -> Object:
-        # print("eval_func\t", func, car, cdr)
+    def eval_func(car: Function, cdr: Object) -> Object:
+        # print("eval_func\t", func.__name__, "\t", cdr())
         return func(cdr())()
 
     return eval_func
 
 
+@metadec
 class Function(Atom):
     def __init__(self, func: FunctionType, for_eval: bool = True):
         super().__init__(eval_func_dec(func), for_eval)
 
+    @property
+    def __name__(self):
+        return self.call.__name__
 
+    @__name__.setter
+    def __name__(self, value):
+        self.call.__name__ = value
+
+
+@metadec
 def eval_default_macro_dec(func: FunctionType
                   ) -> Callable[[Macro, Object], Object]:
     def eval_macro(car: Macro, cdr: Object) -> Object:
@@ -437,3 +487,5 @@ def list_(*elements: Object, for_eval: bool = True) -> Cons:
 Boolean = Union[Truth, EmptyList]
 NIL = Symbol("nil", EmptyList())
 NIL_VALUE = NIL()
+
+# recurring: Set[str] = set()

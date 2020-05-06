@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from core import *
 from operator import *
 from itertools import chain, islice, repeat
@@ -26,7 +27,7 @@ def lambda_(cons: Cons) -> Callable[[Cons], Object]:
     Number(3.0)
     """
 
-    params, value = cons[0], cons[1]
+    params, value = cons[:2]
 
     @Function
     def func(cons: Cons) -> Object:
@@ -36,6 +37,35 @@ def lambda_(cons: Cons) -> Callable[[Cons], Object]:
         return value()
 
     return func
+
+
+@Macro
+@eval_default_macro_dec
+def defun(cons: Cons):
+    print("defun\t", cons)
+    name, params, value = cons[:3]
+    for i, param in enumerate(params):
+        if hasattr(param, "value"):
+            params[i] = Symbol(f"{repr(name)}_({repr(param)})", param.value)
+        else:
+            params[i] = Symbol(f"{repr(name)}_({repr(param)})")
+        value.replace(param, params[i])
+    return bind(list_(name, lambda_(list_(params, value))))
+
+
+@Macro
+def macro(car: Macro, cdr: Cons) -> Callable[[Cons], Object]:
+    params, value = cdr[0], cdr[1]
+    print("macro\t", car, cdr)
+
+    @Macro
+    def user_macro(car: Macro, cdr: Cons) -> Object:
+        param_iter = iter(params)
+        for arg in cdr:
+            next(param_iter).value = arg
+        return value
+
+    return user_macro
 
 
 @Macro
@@ -49,17 +79,19 @@ def map_(car: Macro, cdr: Cons) -> Cons:
     return list_(*map(func, map(list_, args)))
 
 
-@Function
-def if_(cons: Cons) -> Object:
+@Macro
+def if_(car: Macro, cdr: Cons) -> Object:
     """Choose between two values based on a condition.
 
     >>> if_(list_(Truth(), Number(1), Number(2)))
     Number(1.0)
     """
-    condition, if_value, else_value = cons[:3]
-    return if_value if condition else else_value
+    # print("if_\t", repr(cdr))
+    condition, if_value, else_value = cdr[:3]
+    return if_value() if condition() else else_value()
 
 
+@metadec
 def unary_dec(func: Callable) -> Callable[[Cons], Object]:
     def unary_func(cons: Cons) -> Object:
         return Cons(func(cons.car), cons.cdr)
@@ -67,8 +99,10 @@ def unary_dec(func: Callable) -> Callable[[Cons], Object]:
     return unary_func
 
 
+@metadec
 def binary_dec(func: Callable) -> Callable[[Cons], Object]:
     def binary_func(cons: Cons) -> Object:
+        # print("binary_func\t", func, cons)
         if cons.for_eval:
             return reduce(func, cons)
         else:
@@ -77,6 +111,7 @@ def binary_dec(func: Callable) -> Callable[[Cons], Object]:
     return binary_func
 
 
+@metadec
 def ternary_dec(func: Callable) -> Callable[[Cons], Object]:
     def ternary_func(cons: Cons) -> Object:
         return func(*cons[:3])
@@ -84,6 +119,7 @@ def ternary_dec(func: Callable) -> Callable[[Cons], Object]:
     return ternary_func
 
 
+@metadec
 def boolean_dec(func: Callable) -> Callable[[Cons], Boolean]:
     def boolean_func(cons: Cons) -> Boolean:
         return boolean(func(cons))
@@ -91,6 +127,7 @@ def boolean_dec(func: Callable) -> Callable[[Cons], Boolean]:
     return boolean_func
 
 
+@metadec
 def number_dec(func: Callable) -> Callable[[Cons], Number]:
     def number_func(cons: Cons) -> Number:
         return Number(func(cons))
@@ -98,6 +135,7 @@ def number_dec(func: Callable) -> Callable[[Cons], Number]:
     return number_func
 
 
+@metadec
 def iterable_dec(func: Callable) -> Callable[[Cons], Cons]:
     def iterable_func(cons: Cons) -> Cons:
         return list_(*func(cons))
@@ -149,6 +187,8 @@ LIST = Symbol("list", Function(list_))
 BIND = Symbol("bind", bind)
 LAMBDA = Symbol("lambda", lambda_)
 LAMBDA_UNICODE = Symbol("λ", lambda_)
+MACRO = Symbol("macro", macro)
+DEFUN = Symbol("defun", defun)
 IF = Symbol("if", if_)
 CAR = Symbol("car", car)
 CDR = Symbol("cdr", cdr)
@@ -186,6 +226,10 @@ TRUEDIV = Symbol("/", Function(binary_dec(truediv)))
 TRUEDIV_UNICODE1 = Symbol("÷", Function(binary_dec(truediv)))
 TRUEDIV_UNICODE2 = Symbol("∕", Function(binary_dec(truediv)))
 TRUTH = Symbol("?", Function(boolean_dec(binary_dec(truth))))
+
+
+def prep(*args) -> Cons:
+    return list_(*map(Number, args))
 
 if __name__ == "__main__":
     from doctest import testmod

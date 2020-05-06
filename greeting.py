@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from proseparser import step2
 
 code = [
