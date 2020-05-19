@@ -50,4 +50,4 @@ code = [
     ]
 
 if __name__ == "__main__":
-    print(step2(code)())
+    print(step2(code)()())

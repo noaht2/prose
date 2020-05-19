@@ -4,8 +4,7 @@ from proseparser import step2
 code = [
         "map",
         [
-            "defun",
-            "fizzbuzz",
+            "lambda",
             ["x"],
             [
                 "if",
@@ -54,4 +53,4 @@ code = [
         "1"
 ]
 
-output = step2(code)()
+print(step2(code)())

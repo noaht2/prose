@@ -3,6 +3,7 @@ from core import *
 from operator import *
 from itertools import chain, islice, repeat
 from functools import reduce
+from typing import *
 
 @Macro
 def bind(car: Macro, cdr: Cons) -> Symbol:
@@ -39,22 +40,26 @@ def lambda_(cons: Cons) -> Callable[[Cons], Object]:
     return func
 
 
-@Macro
-@eval_default_macro_dec
-def defun(cons: Cons):
-    print("defun\t", cons)
-    name, params, value = cons[:3]
-    for i, param in enumerate(params):
-        if hasattr(param, "value"):
-            params[i] = Symbol(f"{repr(name)}_({repr(param)})", param.value)
-        else:
-            params[i] = Symbol(f"{repr(name)}_({repr(param)})")
-        value.replace(param, params[i])
-    return bind(list_(name, lambda_(list_(params, value))))
+# @Macro
+# @eval_default_macro_dec
+# def defun(cons: Cons):
+#     # print("defun\t", cons)
+#     name, params, value = cons[:3]
+#     for i, param in enumerate(params):
+#         if hasattr(param, "value"):
+#             params[i] = Symbol(f"{repr(name)}_({repr(param)})", param.value)
+#         else:
+#             params[i] = Symbol(f"{repr(name)}_({repr(param)})")
+#         value.replace(param, params[i])
+#     return bind(list_(name, lambda_(list_(params, value))))
 
 
 @Macro
 def macro(car: Macro, cdr: Cons) -> Callable[[Cons], Object]:
+    """A macro to create macro.
+
+    Has not been tested.
+    """
     params, value = cdr[0], cdr[1]
     print("macro\t", car, cdr)
 
@@ -188,7 +193,7 @@ BIND = Symbol("bind", bind)
 LAMBDA = Symbol("lambda", lambda_)
 LAMBDA_UNICODE = Symbol("λ", lambda_)
 MACRO = Symbol("macro", macro)
-DEFUN = Symbol("defun", defun)
+# DEFUN = Symbol("defun", defun)
 IF = Symbol("if", if_)
 CAR = Symbol("car", car)
 CDR = Symbol("cdr", cdr)
