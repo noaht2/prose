@@ -5,6 +5,10 @@ from itertools import chain, islice, repeat
 from functools import reduce
 from typing import *
 
+
+def call(obj: Callable):
+    return obj()
+
 @Macro
 def bind(car: Macro, cdr: Cons) -> Symbol:
     """Bind a symbol to a value and return the symbol.
@@ -14,8 +18,14 @@ def bind(car: Macro, cdr: Cons) -> Symbol:
     """
 
     symbol, value = cdr[:2]
-    symbol.value = value
+    symbol.value = value()
     return symbol
+
+
+@Macro
+def listm(car: Macro, cdr: Cons) -> Cons:
+    return list_(*map(call, cdr))
+
 
 @Macro
 @eval_default_macro_dec
@@ -46,10 +56,11 @@ def lambda_(cons: Cons) -> Callable[[Cons], Object]:
 #     # print("defun\t", cons)
 #     name, params, value = cons[:3]
 #     for i, param in enumerate(params):
-#         if hasattr(param, "value"):
-#             params[i] = Symbol(f"{repr(name)}_({repr(param)})", param.value)
-#         else:
-#             params[i] = Symbol(f"{repr(name)}_({repr(param)})")
+#         params[i] = Symbol(f"{repr(name)}_({repr(param)})")
+#         # if hasattr(param, "value"):
+#         #     params[i] = Symbol(f"{repr(name)}_({repr(param)})", param.value)
+#         # else:
+#         #     params[i] = Symbol(f"{repr(name)}_({repr(param)})")
 #         value.replace(param, params[i])
 #     return bind(list_(name, lambda_(list_(params, value))))
 
@@ -188,6 +199,22 @@ def cdr(cons: Cons) -> Object:
     return cons.cdr
 
 
+@metadec
+def none2nil(func: Callable) -> Callable[..., type(EmptyList)]:
+    def nil_returner(*args, **kwargs) -> type(EmptyList):
+        func(*args, **kwargs)
+        return EmptyList
+
+    return nil_returner
+
+
+@Macro
+def pop(car: Macro, cdr: Cons) -> Cons:
+    stack = cdr()
+    Symbol(cdr, stack.cdr)
+    return stack.car
+
+
 LIST = Symbol("list", Function(list_))
 BIND = Symbol("bind", bind)
 LAMBDA = Symbol("lambda", lambda_)
@@ -198,8 +225,11 @@ IF = Symbol("if", if_)
 CAR = Symbol("car", car)
 CDR = Symbol("cdr", cdr)
 
+PRINT = Symbol("print", Function(unary_dec(none2nil(print))))
+
 MAP = Symbol("map", map_)
 RANGE = Symbol("range", range_)
+LISTM = Symbol("listm", listm)
 
 ABS = Symbol("abs", Function(unary_dec(abs)))
 ADD = Symbol("+", Function(binary_dec(add)))

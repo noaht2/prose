@@ -19,4 +19,7 @@ def step2(tokenised: Union[tuple, list, str]
             if tokenised.startswith("`") and tokenised.endswith("'"):
                 return String(tokenised[1:-1])
             else:
-                return Symbol(tokenised)
+                return Symbol(
+                    tokenised,
+                    # for_eval=(not tokenised.startswith("'"))
+                )

@@ -94,7 +94,7 @@ def cons_eval(car: Cons, cdr: Optional[Cons]) -> Object:
     """Evaluation for ``Cons``"""
     # print("cons_eval\t", car, car.car, car.cdr)
     no_cdr = car.car(car.cdr)
-    if isinstance(cdr, type(None)):
+    if isinstance(cdr, (type(None), type(EmptyList))):
         return no_cdr
     else:
         return no_cdr(cdr)
@@ -262,7 +262,8 @@ class Atom(Object):
     """
 
 
-def empty_eval(car, cdr):
+def empty_eval(car: type(EmptyList), cdr: Object
+               ) -> Union[type(EmptyList, Cons)]:
     return car if isinstance(
         cdr, (type(EmptyList), type(None))
     ) else Cons(car, cdr)
@@ -570,6 +571,9 @@ class Function(Atom):
         """``func`` should act on act on its arguments (not itself)."""
         super().__init__(eval_func_dec(func), for_eval)
 
+    def __repr__(self):
+        return f"<Macro with name={self.__name__}, for_eval={self.for_eval}>"
+
     @property
     def __name__(self):
         return self.call.__name__
@@ -600,8 +604,12 @@ class Macro(Atom):
         """
         super().__init__(func, for_eval)
 
+    def __repr__(self):
+        return f"<Macro with for_eval={self.for_eval}>"
+
 
 def list_(*elements: Object, for_eval: bool = True) -> Cons:
+    """Create a list from ``elements``."""
     result = Cons(elements[0], EmptyList, for_eval=for_eval)
     for element in elements[1:]:
         result[-1] = Cons(element, EmptyList)
