@@ -81,11 +81,10 @@ def lambda_(args: ArgList) -> Operator:
     # print("variables" in globals().keys())
     # print(param["display"], variables.keys())
     def abstraction(args: ArgList) -> Value:
-        # print(param["display"], body["display"], *(arg["display"] for arg in args))
-        # print(variables == variablesL)
-        # print("let1", write(param), write(args[0]), write(body))
-        # print([arg["display"] for arg in args], "\t", tempvars.keys())
-        return evaluate(change_scope(quote([read("let1"), param, args[0], body]), tempvars))
+        if len(args) == 1:
+            return evaluate(change_scope(quote([read("let1"), param, args[0], body]), tempvars))
+        else:
+            return evaluate(change_scope(quote([abstraction(args[:-1]), args[-1]]), tempvars))
     return {"underlying": abstraction,
             "display": ["lambda", write(param), write(body)],
             "scope": tempvars}
