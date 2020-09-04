@@ -6,6 +6,7 @@ from operator import *
 from copy import deepcopy
 from random import random
 
+Entry = Union[str, list]
 Value = Dict[str, Any]
 Operator = Dict[str, Union[str, FunctionType]]
 Integer = Dict[str, Union[int, str]]
@@ -18,33 +19,25 @@ ScopeDict = Dict[str, Value]
 def def_(args: ArgList) -> ProseList:
     """Define a variable.
 
-    >>> print(write(evaluate(read(["def", "x", "1"]))))
-    1
+    >>> write(evaluate(read(["def", "x", "1"])))
+    "1"
     >>> print(write(evaluate(read("x"))))
-    1
+    "1"
     """
     variables[args[0]["underlying"]] = evaluate(args[1])
     return evaluate(args[0])
 
 
 def del_(args: ArgList) -> ProseList:
+    """Remove a variables from `variables`."""
     del variables[args[0]["underlying"]]
     return read([])
 
 
 def let1(args: ArgList) -> Value:
-    # var, value, result = args
-    # print(*(arg["display"] for arg in args))
-    # if value_is_list(var):
-    #     # print(var == read("app"))
-    #     return let1([evaluate(var), value, result])
-    # else:
-    #     return evaluate(change_scope(result,
-    #                                  {**variables,
-    #                                   **{var["underlying"]: evaluate_expression([value])}}))
     var, value, result = args
     if value_is_list(var):
-        # print(var == read("app"))
+        # `var` is code that is evaluated to a variable
         return let1([evaluate(var), value, result])
     elif var["underlying"] in variables:
         old = variables[var["underlying"]]
@@ -58,16 +51,11 @@ def let1(args: ArgList) -> Value:
     return result
 
 
-#def let(args: ArgList) -> Value:
-#    pairs, result = args
-#    if len(args[0]["underlying"]) > 1:
-#        var, value = pairs["underlying"][:2]
-#        return let1([var, value, let([quote(pairs["underlying"][2:]), result])])
-
-
 def change_scope(code: Value, scope: ScopeDict) -> Value:
+    # Used for closures
     if value_is_list(code) and len(code["underlying"]) > 0:
-        return {**quote([change_scope(value, scope) for value in code["underlying"]]),
+        return {**quote([change_scope(value,
+                                      scope) for value in code["underlying"]]),
                 **{"scope": scope}}
     else:
         return {**code, **{"scope": scope}}
@@ -77,28 +65,33 @@ def lambda_(args: ArgList) -> Operator:
     global variables
     param, body = args
     tempvars = deepcopy(variables)
-    # print(*(arg["display"] for arg in args))
-    # print("variables" in globals().keys())
-    # print(param["display"], variables.keys())
     def abstraction(args: ArgList) -> Value:
         if len(args) == 1:
-            return evaluate(change_scope(quote([read("let1"), param, args[0], body]), tempvars))
+            return evaluate(change_scope(quote([read("let1"),
+                                                param,
+                                                args[0],
+                                                body]),
+                                         tempvars))
         else:
-            return evaluate(change_scope(quote([abstraction(args[:-1]), args[-1]]), tempvars))
+            return evaluate(change_scope(quote([abstraction(args[:-1]),
+                                                args[-1]]),
+                                         tempvars))
     return {"underlying": abstraction,
             "display": ["lambda", write(param), write(body)],
             "scope": tempvars}
 
 
 def quote(args: ArgList) -> ProseList:
-    # print(args)
+    """Returns a `ProseList` of the arguments.
+
+    (Without evaluating them first.)
+    """
     return {"underlying": args,
             "display": [write(arg) for arg in args],
             "scope": {}}
 
 
 def evaluate_expression(args: ArgList):
-    # print(*(arg["display"] for arg in args))
     return evaluate(args[0])
 
 
@@ -108,29 +101,21 @@ def list_fn(args: ArgList) -> ProseList:
 
 def if_(args: ArgList):
     if evaluate(args["underlying"][0]):
-        return evaluate(args["underlying"][1])["underlying"]
+        return evaluate(args["underlying"][1])
     else:
-        return evaluate(args["underlying"][2])["underlying"]
+        return evaluate(args["underlying"][2])
 
 
 def first(args: ArgList) -> Value:
-    # print(*(arg["display"] for arg in args))
     return evaluate(args[0])["underlying"][0]
 
 
 def rest(args: ArgList) -> Value:
-    if len(args) > 1:
+    """Returns the second item in a list onwards."""
+    if len(args[0]) > 1:
         return args[0]["underlying"][1:]
     else:
         return read([])
-
-
-# def add(args: ArgList) -> Integer:
-#     for i in range(len(args)):
-#         args[i] = evaluate(args[i])
-#     n = sum(element["underlying"] for element in args)
-#     return {"underlying": n,
-#             "display": str(n)}
 
 
 def println(args: ArgList) -> List:
@@ -191,11 +176,9 @@ variables: ScopeDict = {"def":
                          "scope": {}}}
 
 
-def arith_op(symbol: str, func: BuiltinFunctionType, ) -> None:
+def arith_op(symbol: str, func: BuiltinFunctionType) -> None:
     def compute(args: ArgList) -> Value:
-        # print(symbol, *(arg["display"] for arg in args))
         args = [evaluate(evaluate(arg)) for arg in args]
-        # print(symbol, *(arg["display"] for arg in args))
         current = args[0]["underlying"]
         for n in args[1:]:
             current = func(current, n["underlying"])
@@ -231,28 +214,23 @@ comparison(">=", ge)
 comparison(">", gt)
 
 
-def entry_is_int(entry: str) -> bool:
+def entry_is_int(entry: Entry) -> bool:
     try:
         return type(eval(entry)) is int
     except Exception:
         return False
 
 
-def entry_is_str(entry: str) -> bool:
+def entry_is_str(entry: Entry) -> bool:
     try:
         return type(eval(entry)) is str
     except Exception:
         return False
 
 
-#def entry_is_var(entry: str) -> bool:
-#    return entry.startswith("-")
-
-
 def read(entry: Union[list, str]) -> Value:
     if isinstance(entry, list):
         if len(entry) > 0:
-            # print([read(element) for element in entry])
             return quote([read(element) for element in entry])
         else:
             return {"underlying": [],
@@ -275,7 +253,6 @@ def read(entry: Union[list, str]) -> Value:
 
 
 def value_is_list(value: Value) -> bool:
-    # print(value)
     return type(value["underlying"]) is list
 
 
@@ -296,36 +273,27 @@ def value_is_operator(value: Value):
 
 def value_is_atom(value: Value):
     return (value_is_int(value)
-            or value_is_int(value)
             or value_is_str(value)
             or value_is_operator(value))
 
 
 def evaluate(value: Value) -> Any:
-    # print(value["display"], "\t", type(value["underlying"]), "\t", value_is_list(value))
     if value_is_list(value):
-        # print(value)
         if len(value["underlying"]) > 0:
-            # operator = evaluate(value["underlying"][0])
-            # code = quote([operator]+value["underlying"][1:])
-            # return evaluate(code["underlying"][0])["underlying"](code["underlying"][1:])
             value["underlying"][0] = evaluate(value["underlying"][0])
+            # Evaluate operator
             return value["underlying"][0]["underlying"](value["underlying"][1:])
         else:
             return value
-    elif value_is_int(value) or value_is_str(value) or value_is_operator(value):
+    elif value_is_atom(value):
         return value
+    elif value["underlying"] in value["scope"]:  # var
+        return value["scope"][value["underlying"]]
     else:
-        # print(value)
-        if value["underlying"] in value["scope"]:
-            return value["scope"][value["underlying"]]
-        else:
-            # print(value)
-            return variables[value["display"]]
+        return variables[value["display"]]
 
 
-def write(value: Value) -> Union[list, str]:
-    # print(value)
+def write(value: Value) -> Entry:
     return value["display"]
 
 
@@ -337,9 +305,6 @@ if __name__ == "__main__":
         with open(argv[1]) as f:
             program = f.read()
     elif len(argv) == 3:
-        # print("jiog")
         with open(argv[2]) as f:
             program = "\n".join(f.read().split("\n")[1:])
-    # print(program)
-    # print("rdcygfvbh")
     print(write(evaluate(read(eval(program)))))
