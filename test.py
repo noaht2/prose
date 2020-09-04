@@ -7,7 +7,7 @@ from prose2 import *
 class Test_entry_is_int(unittest.TestCase):
     def test_int(self):
         self.assertTrue(entry_is_int("1"))
-        
+
     def test_str(self):
         self.assertFalse(entry_is_int('"hi"'))
 
@@ -17,13 +17,13 @@ class Test_entry_is_int(unittest.TestCase):
 
 class Test_entry_is_str(unittest.TestCase):
     def test_int(self):
-        self.assertTrue(entry_is_int("1"))
-        
+        self.assertFalse(entry_is_str("1"))
+
     def test_str(self):
-        self.assertFalse(entry_is_int('"hi"'))
+        self.assertTrue(entry_is_str('"hi"'))
 
     def test_var(self):
-        self.assertFalse(entry_is_int("x"))
+        self.assertFalse(entry_is_str("x"))
 
 
 class Test_read(unittest.TestCase):

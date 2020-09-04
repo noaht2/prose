@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
-from typing import Dict, List, Any, Union, List, Optional
+from typing import Dict, List, Any, Union, List, Optional, Callable
 from types import FunctionType, BuiltinFunctionType
 from operator import *
 from copy import deepcopy
+from random import random
 
 Value = Dict[str, Any]
 Operator = Dict[str, Union[str, FunctionType]]
@@ -32,7 +33,15 @@ def del_(args: ArgList) -> ProseList:
 
 
 def let1(args: ArgList) -> Value:
-    # print([write(arg) for arg in args])
+    # var, value, result = args
+    # print(*(arg["display"] for arg in args))
+    # if value_is_list(var):
+    #     # print(var == read("app"))
+    #     return let1([evaluate(var), value, result])
+    # else:
+    #     return evaluate(change_scope(result,
+    #                                  {**variables,
+    #                                   **{var["underlying"]: evaluate_expression([value])}}))
     var, value, result = args
     if value_is_list(var):
         # print(var == read("app"))
@@ -66,20 +75,20 @@ def change_scope(code: Value, scope: ScopeDict) -> Value:
 
 def lambda_(args: ArgList) -> Operator:
     global variables
-    param = args[0]
-    body = args[1]
+    param, body = args
     tempvars = deepcopy(variables)
-    # print(args)
+    # print(*(arg["display"] for arg in args))
     # print("variables" in globals().keys())
     # print(param["display"], variables.keys())
     def abstraction(args: ArgList) -> Value:
+        # print(param["display"], body["display"], *(arg["display"] for arg in args))
         # print(variables == variablesL)
         # print("let1", write(param), write(args[0]), write(body))
         # print([arg["display"] for arg in args], "\t", tempvars.keys())
         return evaluate(change_scope(quote([read("let1"), param, args[0], body]), tempvars))
     return {"underlying": abstraction,
             "display": ["lambda", write(param), write(body)],
-            "scope": variables}
+            "scope": tempvars}
 
 
 def quote(args: ArgList) -> ProseList:
@@ -90,6 +99,7 @@ def quote(args: ArgList) -> ProseList:
 
 
 def evaluate_expression(args: ArgList):
+    # print(*(arg["display"] for arg in args))
     return evaluate(args[0])
 
 
@@ -105,7 +115,8 @@ def if_(args: ArgList):
 
 
 def first(args: ArgList) -> Value:
-    return args[0]["underlying"][0]
+    # print(*(arg["display"] for arg in args))
+    return evaluate(args[0])["underlying"][0]
 
 
 def rest(args: ArgList) -> Value:
@@ -183,7 +194,9 @@ variables: ScopeDict = {"def":
 
 def arith_op(symbol: str, func: BuiltinFunctionType, ) -> None:
     def compute(args: ArgList) -> Value:
-        args = [evaluate(arg) for arg in args]
+        # print(symbol, *(arg["display"] for arg in args))
+        args = [evaluate(evaluate(arg)) for arg in args]
+        # print(symbol, *(arg["display"] for arg in args))
         current = args[0]["underlying"]
         for n in args[1:]:
             current = func(current, n["underlying"])
@@ -263,6 +276,7 @@ def read(entry: Union[list, str]) -> Value:
 
 
 def value_is_list(value: Value) -> bool:
+    # print(value)
     return type(value["underlying"]) is list
 
 
@@ -277,23 +291,38 @@ def value_is_str(value: Value) -> bool:
         return False
 
 
+def value_is_operator(value: Value):
+    return isinstance(value["underlying"], Callable)
+
+
+def value_is_atom(value: Value):
+    return (value_is_int(value)
+            or value_is_int(value)
+            or value_is_str(value)
+            or value_is_operator(value))
+
+
 def evaluate(value: Value) -> Any:
+    # print(value["display"], "\t", type(value["underlying"]), "\t", value_is_list(value))
     if value_is_list(value):
+        # print(value)
         if len(value["underlying"]) > 0:
-            # print(value)
+            # operator = evaluate(value["underlying"][0])
+            # code = quote([operator]+value["underlying"][1:])
+            # return evaluate(code["underlying"][0])["underlying"](code["underlying"][1:])
             value["underlying"][0] = evaluate(value["underlying"][0])
             return value["underlying"][0]["underlying"](value["underlying"][1:])
         else:
             return value
-    elif value_is_int(value) or value_is_str(value):
+    elif value_is_int(value) or value_is_str(value) or value_is_operator(value):
         return value
     else:
         # print(value)
         if value["underlying"] in value["scope"]:
             return value["scope"][value["underlying"]]
         else:
-            # print(value, value_is_var()
-            return variables[value["underlying"]]
+            # print(value)
+            return variables[value["display"]]
 
 
 def write(value: Value) -> Union[list, str]:
@@ -302,14 +331,16 @@ def write(value: Value) -> Union[list, str]:
 
 
 if __name__ == "__main__":
-    from sys import argv, stdin
+    from sys import argv, stdin, stdout
     if len(argv) == 1:
         program = stdin.read()
     elif len(argv) == 2:
         with open(argv[1]) as f:
             program = f.read()
     elif len(argv) == 3:
+        # print("jiog")
         with open(argv[2]) as f:
             program = "\n".join(f.read().split("\n")[1:])
     # print(program)
+    # print("rdcygfvbh")
     print(write(evaluate(read(eval(program)))))
