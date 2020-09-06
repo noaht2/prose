@@ -1,20 +1,12 @@
-#!/usr/bin/env python3
-
-from typing import Dict, List, Any, Union, List, Optional, Callable
-from types import FunctionType, BuiltinFunctionType
 from operator import *
 from copy import deepcopy
 from random import random
+from types import BuiltinFunctionType
+from typing import Any, Callable
 
-Entry = Union[str, list]
-Value = Dict[str, Any]
-Operator = Dict[str, Union[str, FunctionType]]
-Integer = Dict[str, Union[int, str]]
-Keyword = Var = Dict[str, str]
-ProseList = Dict[str, Union[List[Value], str]]
-ArgList = List[Value]
-ScopeDict = Dict[str, Value]
+from typevars import *
 
+__all__ = ["variables", "read", "evaluate", "write"]
 
 def def_(args: ArgList) -> ProseList:
     """Define a variable.
@@ -118,13 +110,12 @@ def rest(args: ArgList) -> Value:
         return read([])
 
 
-def println(args: ArgList) -> List:
+def println(args: ArgList) -> ProseList:
     for i in range(len(args)):
         args[i] = evaluate(args[i])
     for element in args:
         print(evaluate(element)["display"])
     return read([])
-
 
 variables: ScopeDict = {"def":
                         {"underlying": def_,
@@ -228,7 +219,7 @@ def entry_is_str(entry: Entry) -> bool:
         return False
 
 
-def read(entry: Union[list, str]) -> Value:
+def read(entry: Entry) -> Value:
     if isinstance(entry, list):
         if len(entry) > 0:
             return quote([read(element) for element in entry])
@@ -295,16 +286,3 @@ def evaluate(value: Value) -> Any:
 
 def write(value: Value) -> Entry:
     return value["display"]
-
-
-if __name__ == "__main__":
-    from sys import argv, stdin, stdout
-    if len(argv) == 1:
-        program = stdin.read()
-    elif len(argv) == 2:
-        with open(argv[1]) as f:
-            program = f.read()
-    elif len(argv) == 3:
-        with open(argv[2]) as f:
-            program = "\n".join(f.read().split("\n")[1:])
-    print(write(evaluate(read(eval(program)))))

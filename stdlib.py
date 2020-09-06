@@ -1,4 +1,4 @@
-#!/home/noaht2/prose/prose2.py --skip-first-line
+#!/usr/bin/env -S python3 .
 ["list",
  ["def", "lambda2fn1", ["lambda", "app", ["lambda", "arg", ["app", ["eval", "arg"]]]]],
  [["lambda2fn1", ["lambda", "x", ["+", "x", "1"]]], ["+", "1", "1"]],
