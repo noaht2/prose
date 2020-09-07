@@ -16,17 +16,22 @@ def def_(args: ArgList) -> ProseList:
     >>> print(write(evaluate(read("x"))))
     "1"
     """
+    # global variables
+    print(variables)
     variables[args[0]["underlying"]] = evaluate(args[1])
+    print(variables)
     return evaluate(args[0])
 
 
 def del_(args: ArgList) -> ProseList:
     """Remove a variables from `variables`."""
+    # global variables
     del variables[args[0]["underlying"]]
     return read([])
 
 
 def let1(args: ArgList) -> Value:
+    # global variables
     var, value, result = args
     if value_is_list(var):
         # `var` is code that is evaluated to a variable
@@ -220,6 +225,7 @@ def entry_is_str(entry: Entry) -> bool:
 
 
 def read(entry: Entry) -> Value:
+    # print(entry)
     if isinstance(entry, list):
         if len(entry) > 0:
             return quote([read(element) for element in entry])
@@ -269,6 +275,7 @@ def value_is_atom(value: Value):
 
 
 def evaluate(value: Value) -> Any:
+    # print(variables.keys())
     if value_is_list(value):
         if len(value["underlying"]) > 0:
             value["underlying"][0] = evaluate(value["underlying"][0])
@@ -286,3 +293,7 @@ def evaluate(value: Value) -> Any:
 
 def write(value: Value) -> Entry:
     return value["display"]
+
+
+def main(entry: Entry) -> Value:
+    return write(evaluate(read(entry)))
