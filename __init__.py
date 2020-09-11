@@ -17,9 +17,9 @@ def def_(args: ArgList) -> ProseList:
     "1"
     """
     # global variables
-    print(variables)
+    # print(variables)
     variables[args[0]["underlying"]] = evaluate(args[1])
-    print(variables)
+    # print(variables)
     return evaluate(args[0])
 
 
@@ -280,6 +280,7 @@ def evaluate(value: Value) -> Any:
         if len(value["underlying"]) > 0:
             value["underlying"][0] = evaluate(value["underlying"][0])
             # Evaluate operator
+            # print(value["display"])
             return value["underlying"][0]["underlying"](value["underlying"][1:])
         else:
             return value

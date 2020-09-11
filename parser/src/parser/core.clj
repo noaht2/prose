@@ -1,4 +1,4 @@
-(ns lexer.core
+(ns parser.core
   (:gen-class)
   (:require [cheshire.core :refer :all]))
 

@@ -1,5 +1,5 @@
 #!/usr/bin/sh
 
-cd ~/prose/lexer
+cd ~/prose/parser
 lein uberjar
-mv -v target/lexer-0.1.0-SNAPSHOT-standalone.jar ../lexer.jar
+mv -v target/parser-0.1.0-SNAPSHOT-standalone.jar ../parser.jar
