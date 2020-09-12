@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from operator import *
 from copy import deepcopy
 from random import random
@@ -11,7 +13,7 @@ __all__ = ["variables", "read", "evaluate", "write"]
 def def_(args: ArgList) -> ProseList:
     """Define a variable.
 
-    >>> write(evaluate(read(["def", "x", "1"])))
+    >>> write(evaluate(read(("def", "x", "1"))))
     "1"
     >>> print(write(evaluate(read("x"))))
     "1"
@@ -35,7 +37,7 @@ def let1(args: ArgList) -> Value:
     var, value, result = args
     if value_is_list(var):
         # `var` is code that is evaluated to a variable
-        return let1([evaluate(var), value, result])
+        return let1((evaluate(var), value, result))
     elif var["underlying"] in variables:
         old = variables[var["underlying"]]
         variables[var["underlying"]] = evaluate(value)
@@ -51,8 +53,8 @@ def let1(args: ArgList) -> Value:
 def change_scope(code: Value, scope: ScopeDict) -> Value:
     # Used for closures
     if value_is_list(code) and len(code["underlying"]) > 0:
-        return {**quote([change_scope(value,
-                                      scope) for value in code["underlying"]]),
+        return {**quote(tuple(change_scope(value,
+                                           scope) for value in code["underlying"])),
                 **{"scope": scope}}
     else:
         return {**code, **{"scope": scope}}
@@ -64,17 +66,17 @@ def lambda_(args: ArgList) -> Operator:
     tempvars = deepcopy(variables)
     def abstraction(args: ArgList) -> Value:
         if len(args) == 1:
-            return evaluate(change_scope(quote([read("let1"),
+            return evaluate(change_scope(quote((read("let1"),
                                                 param,
                                                 args[0],
-                                                body]),
+                                                body)),
                                          tempvars))
         else:
-            return evaluate(change_scope(quote([abstraction(args[:-1]),
-                                                args[-1]]),
+            return evaluate(change_scope(quote((abstraction(args[:-1]),
+                                                args[-1])),
                                          tempvars))
     return {"underlying": abstraction,
-            "display": ["lambda", write(param), write(body)],
+            "display": ("lambda", write(param), write(body)),
             "scope": tempvars}
 
 
@@ -84,7 +86,7 @@ def quote(args: ArgList) -> ProseList:
     (Without evaluating them first.)
     """
     return {"underlying": args,
-            "display": [write(arg) for arg in args],
+            "display": tuple(write(arg) for arg in args),
             "scope": {}}
 
 
@@ -93,7 +95,7 @@ def evaluate_expression(args: ArgList):
 
 
 def list_fn(args: ArgList) -> ProseList:
-    return quote([evaluate(arg) for arg in args])
+    return quote(tuple(evaluate(arg) for arg in args))
 
 
 def if_(args: ArgList):
@@ -112,7 +114,7 @@ def rest(args: ArgList) -> Value:
     if len(args[0]) > 1:
         return args[0]["underlying"][1:]
     else:
-        return read([])
+        return read(())
 
 
 def println(args: ArgList) -> ProseList:
@@ -120,7 +122,7 @@ def println(args: ArgList) -> ProseList:
         args[i] = evaluate(args[i])
     for element in args:
         print(evaluate(element)["display"])
-    return read([])
+    return read(())
 
 variables: ScopeDict = {"def":
                         {"underlying": def_,
@@ -174,7 +176,7 @@ variables: ScopeDict = {"def":
 
 def arith_op(symbol: str, func: BuiltinFunctionType) -> None:
     def compute(args: ArgList) -> Value:
-        args = [evaluate(evaluate(arg)) for arg in args]
+        args = tuple(evaluate(evaluate(arg)) for arg in args)
         current = args[0]["underlying"]
         for n in args[1:]:
             current = func(current, n["underlying"])
@@ -195,8 +197,8 @@ arith_op("-", sub)
 
 def comparison(symbol: str, func: BuiltinFunctionType) -> None:
     def compare(args: ArgList) -> Value:
-        args = [evaluate(arg) for arg in args]
-        return read("true") if func(args[0], args[1]) else read([])
+        args = tuple(evaluate(arg) for arg in args)
+        return read("true") if func(args[0], args[1]) else read(())
     variables[symbol] = {"underlying": compare,
                          "display": symbol,
                          "scope": {}}
@@ -208,6 +210,9 @@ comparison("==", eq)
 comparison("!=", ne)
 comparison(">=", ge)
 comparison(">", gt)
+
+def entry_is_list(entry: Entry) -> bool:
+    return isinstance(entry, tuple)
 
 
 def entry_is_int(entry: Entry) -> bool:
@@ -226,12 +231,12 @@ def entry_is_str(entry: Entry) -> bool:
 
 def read(entry: Entry) -> Value:
     # print(entry)
-    if isinstance(entry, list):
+    if entry_is_list(entry):
         if len(entry) > 0:
-            return quote([read(element) for element in entry])
+            return quote(tuple(read(element) for element in entry))
         else:
-            return {"underlying": [],
-                    "display": [],
+            return {"underlying": (),
+                    "display": (),
                     "scope": {}}
     else:
         if entry_is_int(entry):
@@ -250,7 +255,7 @@ def read(entry: Entry) -> Value:
 
 
 def value_is_list(value: Value) -> bool:
-    return type(value["underlying"]) is list
+    return type(value["underlying"]) is tuple
 
 
 def value_is_int(value: Value) -> bool:
@@ -278,10 +283,7 @@ def evaluate(value: Value) -> Any:
     # print(variables.keys())
     if value_is_list(value):
         if len(value["underlying"]) > 0:
-            value["underlying"][0] = evaluate(value["underlying"][0])
-            # Evaluate operator
-            # print(value["display"])
-            return value["underlying"][0]["underlying"](value["underlying"][1:])
+            return evaluate(value["underlying"][0])["underlying"](value["underlying"][1:])
         else:
             return value
     elif value_is_atom(value):
@@ -296,5 +298,15 @@ def write(value: Value) -> Entry:
     return value["display"]
 
 
-def main(entry: Entry) -> Value:
-    return write(evaluate(read(entry)))
+def convert_seq(obj: Any, from_: type, to: type) -> Any:
+    if isinstance(obj, from_):
+        if len(obj) > 0:
+            return to(convert_seq(item, from_, to) for item in obj)
+        else:
+            return to()
+    else:
+        return obj
+
+
+def main(entry) -> Value:
+    return write(evaluate(read(convert_seq(entry, list, tuple))))

@@ -17,7 +17,4 @@
   (map rm-clj code))
 
 (defn -main [& args]
-  (println
-   (generate-string
-    (rm-clj (read-string (apply str
-                                (take-while identity (repeatedly #(.readLine *in*)))))))))
+  (println (generate-string (rm-clj (read)))))

@@ -7,12 +7,12 @@ import __init__ as prose
 INT = "1"
 STR = '"hi"'
 VAR = "x"
-LIST = [prose.read([]), INT, STR, VAR]
+LIST = (prose.read(()), INT, STR, VAR)
 
 
 class Test_entry_is_int(unittest.TestCase):
     def test_empty_list(self):
-        self.assertFalse(prose.entry_is_int([]))
+        self.assertFalse(prose.entry_is_int(()))
         
     def test_int(self):
         self.assertTrue(prose.entry_is_int(INT))
@@ -29,7 +29,7 @@ class Test_entry_is_int(unittest.TestCase):
 
 class Test_entry_is_str(unittest.TestCase):
     def test_empty_list(self):
-        self.assertFalse(prose.entry_is_str([]))
+        self.assertFalse(prose.entry_is_str(()))
         
     def test_int(self):
         self.assertFalse(prose.entry_is_str(INT))
@@ -43,7 +43,7 @@ class Test_entry_is_str(unittest.TestCase):
 
 class Test_read(unittest.TestCase):
     def test_empty_list(self):
-        self.assertEqual(prose.read([]), {"underlying": [], "display": [], "scope": {}})
+        self.assertEqual(prose.read(()), {"underlying": (), "display": (), "scope": {}})
 
     def test_int(self):
         self.assertEqual(prose.read(INT), {"underlying": int(INT), "display": INT, "scope": {}})
@@ -55,19 +55,19 @@ class Test_read(unittest.TestCase):
         self.assertEqual(prose.read(VAR), {"underlying": VAR, "display": VAR, "scope": {}})
 
     def test_list(self):
-        self.assertEqual(prose.read([[], "1", '"hi"', "x"]),
-                         {"underlying": [{'underlying': [], 'display': [], "scope": {}},
+        self.assertEqual(prose.read(((), "1", '"hi"', "x")),
+                         {"underlying": ({'underlying': (), 'display': (), "scope": {}},
                                          {"underlying": 1, "display": "1", "scope": {}},
                                          {"underlying": "hi",
                                           "display": '"hi"',
                                           "scope": {}},
-                                         {"underlying": "x", "display": "x", "scope": {}}],
-                          "display": [[], "1", '"hi"', "x"], "scope": {}})
+                                         {"underlying": "x", "display": "x", "scope": {}}),
+                          "display": ((), "1", '"hi"', "x"), "scope": {}})
 
 
 class Test_value_is_list(unittest.TestCase):
     def test_empty_list(self):
-        self.assertTrue(prose.value_is_list(prose.read([])))
+        self.assertTrue(prose.value_is_list(prose.read(())))
 
     def test_int(self):
         self.assertFalse(prose.value_is_list(prose.read(INT)))
@@ -84,7 +84,7 @@ class Test_value_is_list(unittest.TestCase):
 
 class Test_value_is_int(unittest.TestCase):
     def test_empty_list(self):
-        self.assertFalse(prose.value_is_int(prose.read([])))
+        self.assertFalse(prose.value_is_int(prose.read(())))
 
     def test_int(self):
         self.assertTrue(prose.value_is_int(prose.read(INT)))
@@ -101,7 +101,7 @@ class Test_value_is_int(unittest.TestCase):
 
 class Test_value_is_str(unittest.TestCase):
     def test_empty_list(self):
-        self.assertFalse(prose.value_is_str(prose.read([])))
+        self.assertFalse(prose.value_is_str(prose.read(())))
 
     def test_int(self):
         self.assertFalse(prose.value_is_str(prose.read(INT)))
@@ -118,7 +118,7 @@ class Test_value_is_str(unittest.TestCase):
 
 class Test_evaluate(unittest.TestCase):
     def test_empty_list(self):
-        self.assertEqual(prose.evaluate(prose.read([])), prose.read([]))
+        self.assertEqual(prose.evaluate(prose.read(())), prose.read(()))
 
     def test_int(self):
         self.assertEqual(prose.evaluate(prose.read(INT)), prose.read(INT))
