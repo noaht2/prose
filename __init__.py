@@ -76,7 +76,7 @@ def lambda_(args: ArgList) -> Operator:
                                                 args[-1])),
                                          tempvars))
     return {"underlying": abstraction,
-            "display": ("lambda", write(param), write(body)),
+            "display": f'(lambda {param["display"]} {body["display"]})',
             "scope": tempvars}
 
 
@@ -85,8 +85,12 @@ def quote(args: ArgList) -> ProseList:
 
     (Without evaluating them first.)
     """
+    display = f'({args[0]["display"]}'
+    for arg in args[1:]:
+        display += f' {arg["display"]}'
+    display += ")"
     return {"underlying": args,
-            "display": tuple(write(arg) for arg in args),
+            "display": display,
             "scope": {}}
 
 
@@ -236,7 +240,7 @@ def read(entry: Entry) -> Value:
             return quote(tuple(read(element) for element in entry))
         else:
             return {"underlying": (),
-                    "display": (),
+                    "display": "()",
                     "scope": {}}
     else:
         if entry_is_int(entry):
@@ -259,7 +263,7 @@ def value_is_list(value: Value) -> bool:
 
 
 def value_is_int(value: Value) -> bool:
-    return entry_is_int(write(value))
+    return entry_is_int(value["display"])
 
 
 def value_is_str(value: Value) -> bool:
@@ -294,10 +298,6 @@ def evaluate(value: Value) -> Any:
         return variables[value["display"]]
 
 
-def write(value: Value) -> Entry:
-    return value["display"]
-
-
 def convert_seq(obj: Any, from_: type, to: type) -> Any:
     if isinstance(obj, from_):
         if len(obj) > 0:
@@ -309,4 +309,4 @@ def convert_seq(obj: Any, from_: type, to: type) -> Any:
 
 
 def main(entry) -> Value:
-    return write(evaluate(read(convert_seq(entry, list, tuple))))
+    return evaluate(read(convert_seq(entry, list, tuple)))["display"]

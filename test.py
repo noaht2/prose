@@ -43,7 +43,7 @@ class Test_entry_is_str(unittest.TestCase):
 
 class Test_read(unittest.TestCase):
     def test_empty_list(self):
-        self.assertEqual(prose.read(()), {"underlying": (), "display": (), "scope": {}})
+        self.assertEqual(prose.read(()), {"underlying": (), "display": "()", "scope": {}})
 
     def test_int(self):
         self.assertEqual(prose.read(INT), {"underlying": int(INT), "display": INT, "scope": {}})
@@ -56,13 +56,14 @@ class Test_read(unittest.TestCase):
 
     def test_list(self):
         self.assertEqual(prose.read(((), "1", '"hi"', "x")),
-                         {"underlying": ({'underlying': (), 'display': (), "scope": {}},
+                         {"underlying": ({'underlying': (), 'display': "()", "scope": {}},
                                          {"underlying": 1, "display": "1", "scope": {}},
                                          {"underlying": "hi",
                                           "display": '"hi"',
                                           "scope": {}},
                                          {"underlying": "x", "display": "x", "scope": {}}),
-                          "display": ((), "1", '"hi"', "x"), "scope": {}})
+                          "display": '(() 1 "hi" x)',
+                          "scope": {}})
 
 
 class Test_value_is_list(unittest.TestCase):
