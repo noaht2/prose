@@ -8,7 +8,7 @@ from typing import Any, Callable
 
 from typevars import *
 
-__all__ = ["variables", "read", "evaluate", "write"]
+__all__ = ["main"]
 
 def def_(args: ArgList) -> ProseList:
     """Define a variable.
