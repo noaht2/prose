@@ -15,7 +15,7 @@ def def_(args: ArgList) -> ProseList:
 
     >>> write(evaluate(read(("def", "x", "1"))))
     "1"
-    >>> print(write(evaluate(read("x"))))
+    >>> write(evaluate(read("x")))
     "1"
     """
     # global variables
@@ -33,20 +33,12 @@ def del_(args: ArgList) -> ProseList:
 
 
 def let1(args: ArgList) -> Value:
-    # global variables
+    # print(*(arg["display"] for arg in args))
     var, value, result = args
-    if value_is_list(var):
-        # `var` is code that is evaluated to a variable
-        return let1((evaluate(var), value, result))
-    elif var["underlying"] in variables:
-        old = variables[var["underlying"]]
-        variables[var["underlying"]] = evaluate(value)
-        result = evaluate(result)
-        variables[var["underlying"]] = old
-    else:
-        variables[var["underlying"]] = evaluate(value)
-        result = evaluate(result)
-        del variables[var["underlying"]]
+    variables[var["underlying"]] = value
+    result = evaluate(result)
+    # print(result["display"])
+    del variables[var["underlying"]]
     return result
 
 
@@ -95,11 +87,20 @@ def quote(args: ArgList) -> ProseList:
 
 
 def evaluate_expression(args: ArgList):
-    return evaluate(args[0])
+    return evaluate(evaluate(args[0]))
+
+
+def pass_(args: ArgList):
+    return args[0]
 
 
 def list_fn(args: ArgList) -> ProseList:
+    # print(*(arg["display"] for arg in args))
     return quote(tuple(evaluate(arg) for arg in args))
+
+
+def concat_(args: ArgList) -> ProseList:
+    return quote(reduce(concat, map((lambda L: L["underlying"]), args)))
 
 
 def if_(args: ArgList):
@@ -136,13 +137,17 @@ variables: ScopeDict = {"def":
                         {"underlying": lambda_,
                          "display": "lambda",
                          "scope": {}},
-                        "'":
+                        "quote":
                         {"underlying": quote,
-                         "display": "'",
+                         "display": "quote",
                          "scope": {}},
                         "eval":
                         {"underlying": evaluate_expression,
                          "display": "eval",
+                         "scope": {}},
+                        "pass":
+                        {"underlying": pass_,
+                         "display": "pass",
                          "scope": {}},
                         "let1":
                         {"underlying": let1,
@@ -164,14 +169,10 @@ variables: ScopeDict = {"def":
                         {"underlying": rest,
                          "display": "rest",
                          "scope": {}},
-                        "+":
-                        {"underlying": add,
-                         "display": "+",
-                         "scope": {}},
                         "println":
                         {"underlying": println,
                          "display": "println",
-                        "scope": {}},
+                         "scope": {}},
                         "true":
                         {"underlying": True,
                          "display": "true",
@@ -283,18 +284,29 @@ def value_is_atom(value: Value):
             or value_is_operator(value))
 
 
+def make_operator(value: Value):
+    if value_is_operator(value):
+        return value
+    else:
+        return make_operator(evaluate(value))
+
+
 def evaluate(value: Value) -> Any:
+    # print(type(value["underlying"]) is tuple)
     # print(variables.keys())
     if value_is_list(value):
         if len(value["underlying"]) > 0:
-            return evaluate(value["underlying"][0])["underlying"](value["underlying"][1:])
+            # print(value["underlying"][0]["underlying"])
+            return make_operator(value["underlying"][0])["underlying"](value["underlying"][1:])
         else:
             return value
     elif value_is_atom(value):
         return value
     elif value["underlying"] in value["scope"]:  # var
+        # print(value["scope"][value["underlying"]]["display"])
         return value["scope"][value["underlying"]]
     else:
+        # print(variables[value["display"]]["display"])
         return variables[value["display"]]
 
 
@@ -309,4 +321,5 @@ def convert_seq(obj: Any, from_: type, to: type) -> Any:
 
 
 def main(entry) -> Value:
-    return evaluate(read(convert_seq(entry, list, tuple)))["display"]
+    result =  evaluate(read(convert_seq(entry, list, tuple)))
+    return result["display"]
